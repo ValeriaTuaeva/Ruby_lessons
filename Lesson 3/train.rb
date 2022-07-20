@@ -4,7 +4,14 @@ load './route.rb'
 # Создание класса Train (Поезд)
 class Train
 
-	attr_accessor :route, :type, :current_station, :speed
+# Может возвращать текущую скорость, текущую станцию, количество вагонов (а также номер, тип вагона, макисимальную скорость)
+	attr_accessor :current_station
+
+	attr_reader :number
+	attr_reader :quantity_of_wagons
+	attr_reader :type
+	attr_reader :speed
+	attr_reader :max_speed
 
 # Имеет номер (произвольная строка) и тип (грузовой, пассажирский) и количество вагонов, 
 # эти данные указываются при создании экземпляра класса
@@ -12,32 +19,21 @@ class Train
 		@number = number
 		@type = type
 		@quantity_of_wagons = quantity_of_wagons
-		@type = type if type == :passenger || type == :fright
+
 		@speed = 0
+		@max_speed = 100
+		@current_station = nil
 	end
+
 # Может набирать скорость
 	def speed_pick_up(speed)
-		@speed += speed
+		@speed = speed
 		@speed = 0 if @speed < 0
-	end
-
-# Может возвращать текущую скорость и текущую станцию
-	def current_speed
-		@speed
-	end
-
-	def current_station
-		@current_station
 	end
 
 # Может тормозить (сбрасывать скорость до нуля)
 	def stop
 		@speed = 0
-	end
-
-# Может возвращать количество вагонов
-	def wagons
-		@quantity_of_wagons
 	end
 
 # Может прицеплять/отцеплять вагоны (по одному вагону за операцию, метод просто увеличивает 
@@ -48,61 +44,78 @@ class Train
 	end
 
 	def decrease_wagons
-		@quantity_of_wagons -= 1 if @speed == 0 && @quantity_of_wagons > 0
+		@quantity_of_wagons -= 1 if (@speed == 0) && (@quantity_of_wagons > 0)
 	end
 
 # Может принимать маршрут следования (объект класса Route). 
-# При назначении маршрута поезду, поезд автоматически помещается на первую станцию в маршруте.
 	def set_route(route)
 		@route = route
-		stations_list.first.accept_train(self)
-		@current_station = stations_list.first
+
+# При назначении маршрута поезду, поезд автоматически помещается на первую станцию в маршруте.		
+		@route.first_station.accept_train(self)
+		@current_station = @route.first_station
 	end
 
 # Может перемещаться между станциями, указанными в маршруте. 
 # Перемещение возможно вперед и назад, но только на 1 станцию за раз.
-	def move_forward
-		index = stations_list.index(@current_station)
-		next_station = stations_list[index+1]
-		unless next_station.nil?
-			@current_station.send_train 
-			@current_station = next_station 
-			@current_station.accept_train(self)
-		end
-	end
 
-	def move_backwards
-		index = stations_list.index(@current_station)
-		next_station = stations_list[index-1]
-		if !next_station.nil? && next_station != stations_list.last 
-			@current_station.send_train
-			@current_station = next_station
-			@current_station.accept_train(self)
-		end
-	end
+# перемещается на следующую станцию
+  def move_to_next_station
+  	return if next_station.nil?
+  	destination = next_station
 
-# Возвращать предыдущую станцию, текущую, следующую, на основе маршрута
-	def next_station
-		index = stations_list.index(@current_station)
-		if next_station = stations_list[index + 1]
-			next_station
-		else
-			puts "This is the last station"
-		end
-	end
+  	@current_station.send_train(self)
+  	@current_station = nil
+
+  	speed_pick_up(max_speed)
+
+ # едет до станции назначения
+    stop 
+
+    @current_station = destination
+    @current_station.accept_train(self)
+
+  end
+
+ # перемещается к предыдущей станции
+  def move_to_previous_station
+  	return if previous_station.nil?
+  	destination = previous_station
+
+  	@current_station.send_train(self)
+  	@current_station = nil
+
+  	speed_pick_up(max_speed)
+
+ # едет до станции назначения
+    stop 
+
+    @current_station = destination
+    @current_station.accept_train(self)
+
+  end
+
+
+# Возвращать предыдущую и следующую станции на основе маршрута
 
 	def previous_station
-		index = stations_list.index(@current_station)
-		previous_station = stations_list[index - 1]
-		if previous_station != stations_list.last
-			previous_station
-		else
-			puts "This is the first station"
-		end
+		index = @route.show_route.find_index(@current_station)
+
+			if index > 0 
+				@route.show_route[index - 1] 
+			else
+				nil
+			end
 	end
 
-	def stations_list
-		@route.show_route
+	def next_station
+		index = @route.show_route.find_index(@current_station)
+
+			if index < @route.show_route.length - 1
+				@route.show_route[index + 1] 
+			else
+				nil
+			end
 	end
 
 end
